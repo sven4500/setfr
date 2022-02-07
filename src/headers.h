@@ -2,10 +2,18 @@
 #ifndef HEADERS_H_
 #define HEADERS_H_
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 
 #include <Winsock2.h>
 #include <Windows.h>
+
+#endif
+
+#if defined(__linux__)
+
+#define FAR
+
+#endif
 
 #pragma pack(push, 1)
 
@@ -38,7 +46,5 @@ typedef struct udp_hdr
 } UDP_HDR, * PUDP_HDR, FAR * LPUDP_HDR;
 
 #pragma pack(pop)
-
-#endif
 
 #endif

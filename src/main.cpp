@@ -2,14 +2,23 @@
 #include <errno.h> // EOK
 
 #if defined(_MSC_VER)
+
 #include <Winsock2.h>
 #include <ws2ipdef.h> // IP_HDRINCL
 #include <Windows.h>
 #include "headers.h" // LPIPV4_HDR, LPUDP_HDR
 #define EOK 0
+
 #elif defined(__linux__)
+
 #include <stdlib.h> // EXIT_SUCCESS, EXIT_FAILUER
+#include <stdint.h> // uint16_t, uint32_t
+#include <string.h> // strcpy
+#include <sys/socket.h> // socket, setsockopt
+#include <arpa/inet.h> // inet_addr, htons
 #include <unistd.h> // close
+#include <headers.h>
+
 #endif
 
 // https://www.binarytides.com/raw-sockets-packets-with-winpcap/
@@ -36,13 +45,13 @@ int main(int argc, char** argv)
 	free(lpProtocolInfo);*/
 #endif
 
-	DWORD const BUF_MAX = 1200;
-	CHAR buf[BUF_MAX] = {};
-	DWORD dwPayload = 32;
-	WORD wSrcePort = 8000, wDestPort = 8001;
+	int const BUF_MAX = 1200;
+	int8_t buf[BUF_MAX] = {};
+	int dwPayload = 32;
+	uint16_t wSrcePort = 8000, wDestPort = 8001;
 	
 	LPIPV4_HDR const iphdr = (LPIPV4_HDR)&buf[0];
-	iphdr->ip_verlen = (4 << 4) | (sizeof(IPV4_HDR) / sizeof(ULONG));
+	iphdr->ip_verlen = (4 << 4) | (sizeof(IPV4_HDR) / sizeof(uint32_t));
 	iphdr->ip_tos = 0;
 	iphdr->ip_totallength = htons(sizeof(IPV4_HDR) + sizeof(UDP_HDR) + dwPayload);
 	iphdr->ip_id = 0;
@@ -65,7 +74,7 @@ int main(int argc, char** argv)
 	udphdr->udp_length = htons(sizeof(UDP_HDR) + dwPayload);
 	//udphdr->udp_checksum = 0;
 
-	LPSTR const data = (LPSTR)&buf[sizeof(IPV4_HDR) + sizeof(UDP_HDR)];
+	char* data = (char*)&buf[sizeof(IPV4_HDR) + sizeof(UDP_HDR)];
 	strcpy(data, "Hello RAW sockets");
 
 	// Calculate the IPv4 and UDP pseudo-header checksum - this routine
@@ -83,15 +92,15 @@ int main(int argc, char** argv)
 	}
 
 	// Сообщаем ОС что IP заголовок предоставим самостоятельно.
-	INT iOptVal = 1;
+	int iOptVal = 1;
 	setsockopt(sock, IPPROTO_IP, IP_HDRINCL, (char*)&iOptVal, sizeof(iOptVal));
 
-	SOCKADDR_STORAGE addr = {};
-	((SOCKADDR_IN *)&addr)->sin_family = AF_INET;
-	//((SOCKADDR_IN *)&addr)->sin_port = udphdr->dst_portno;
-	((SOCKADDR_IN *)&addr)->sin_addr.s_addr = iphdr->ip_destaddr;
+	sockaddr_storage addr = {};
+	((sockaddr_in *)&addr)->sin_family = AF_INET;
+	((sockaddr_in *)&addr)->sin_port = udphdr->dst_portno;
+	((sockaddr_in *)&addr)->sin_addr.s_addr = iphdr->ip_destaddr;
 
-	INT const iBytesSent = sendto(sock, buf, sizeof(IPV4_HDR) + sizeof(UDP_HDR) + dwPayload, 0, (SOCKADDR *)&addr, sizeof(addr));
+	int const iBytesSent = sendto(sock, buf, sizeof(IPV4_HDR) + sizeof(UDP_HDR) + dwPayload, 0, (sockaddr *)&addr, sizeof(addr));
 	printf("%d bytes sent\n", iBytesSent);
 
 #if defined(_MSC_VER)
