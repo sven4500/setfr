@@ -7,6 +7,9 @@
 #include <Windows.h>
 #include "headers.h" // LPIPV4_HDR, LPUDP_HDR
 #define EOK 0
+#elif defined(__linux__)
+#include <stdlib.h> // EXIT_SUCCESS, EXIT_FAILUER
+#include <unistd.h> // close
 #endif
 
 // https://www.binarytides.com/raw-sockets-packets-with-winpcap/
