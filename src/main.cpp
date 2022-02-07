@@ -18,8 +18,23 @@
 #include <arpa/inet.h> // inet_addr, htons
 #include <unistd.h> // close
 #include <headers.h>
+#include <pthread.h>
 
 #endif
+
+/*void* udp_recv_thread(void*)
+{
+    int const sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_port = htons(8001);
+    int ret = bind(sock, (sockaddr *)&addr, sizeof(addr));
+    usleep(500000);
+    char buf[32] = {};
+    int const size = recv(sock, buf, sizeof(buf), 0);
+    return 0;
+}*/
 
 // https://www.binarytides.com/raw-sockets-packets-with-winpcap/
 // https://www.binarytides.com/raw-sockets-using-winsock/

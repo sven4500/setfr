@@ -11,3 +11,5 @@ HEADERS += \
 
 SOURCES += \
     $$PWD/../../src/main.cpp
+
+LIBS += -lpthread
