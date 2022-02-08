@@ -21,6 +21,7 @@
 #include <string.h> // strcpy
 #include <sys/socket.h> // socket, setsockopt
 #include <arpa/inet.h> // inet_addr, htons
+#include <linux/limits.h> // PATH_MAX
 #include <unistd.h> // close
 #include <headers.h>
 #include <pthread.h>
@@ -60,10 +61,10 @@ int main(int argc, char** argv)
 	}
 #endif
 
-	char filename[MAX_PATH] = {};
+	char filename[PATH_MAX] = {}, ipv4[20] = {};
 	int c = 0, osi_level = 0, port = 0;
 
-	while ((c = getopt(argc, argv, "hf:o:p:")) != -1)
+	while ((c = getopt(argc, argv, "hf:o:i:p:")) != -1)
 	{
 		switch (c)
 		{
@@ -73,6 +74,9 @@ int main(int argc, char** argv)
 		case 'o':
 			osi_level = atoi(optarg);
 			break;
+		case 'i':
+			strcpy(ipv4, optarg);
+			break;
 		case 'p':
 			port = atoi(optarg);
 			break;
@@ -81,6 +85,7 @@ int main(int argc, char** argv)
 				"setfr (send Ethernet frame) utility\n"
 				"-f [path] path to Ethernet frame containing file\n"
 				"-o [2..4] OSI level\n"
+				"-i [xxx.xxx.xxx.xxx] IPv4 address\n"
 				"-p [..65535] port number\n"
 				"-h - print this message\n"
 			);
@@ -131,8 +136,10 @@ int main(int argc, char** argv)
 		setsockopt(sock, IPPROTO_IP, IP_HDRINCL, (char*)&optval, sizeof(optval));
 
 		((sockaddr_in *)&addr)->sin_family = AF_INET;
-		//((sockaddr_in *)&addr)->sin_port = udphdr->dst_portno;
-		((sockaddr_in *)&addr)->sin_addr.s_addr = htons(port);
+		((sockaddr_in *)&addr)->sin_port = htons(port);
+		// Ќа UNIX-подобных системах inet_addr возвращает !0 на пустой строке.
+		if(*ipv4)
+			((sockaddr_in *)&addr)->sin_addr.s_addr = inet_addr(ipv4);
 	}
 	else
 	{
