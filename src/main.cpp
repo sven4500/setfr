@@ -23,6 +23,8 @@
 #include <sys/socket.h> // socket, setsockopt
 #include <arpa/inet.h> // inet_addr, htons
 #include <linux/limits.h> // PATH_MAX
+#include <linux/if_packet.h> // sockaddr_ll
+#include <netinet/ether.h> // ether_header
 #include <unistd.h> // close
 #include <headers.h>
 #include <pthread.h>
@@ -32,13 +34,14 @@
 /*void* udp_recv_thread(void*)
 {
     int const sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    //int const sock = socket(AF_INET, SOCK_PACKET, htons(ETH_P_ALL));
     sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_port = htons(8001);
     int ret = bind(sock, (sockaddr *)&addr, sizeof(addr));
     usleep(500000);
-    char buf[32] = {};
+    char buf[74] = {};
     int const size = recv(sock, buf, sizeof(buf), 0);
     return 0;
 }*/
@@ -63,9 +66,10 @@ int main(int argc, char** argv)
 #endif
 
 	char filename[PATH_MAX] = {}, ipv4[20] = {};
-	int c = 0, osi_level = 0, port = 0;
+	int c = 0, osi_level = 0, port = 0, dev_ind = 0;
+	uint8_t dest_mac[6] = {};
 
-	while ((c = getopt(argc, argv, "hf:o:i:p:")) != -1)
+	while ((c = getopt(argc, argv, "hf:o:i:p:d:m:")) != -1)
 	{
 		switch (c)
 		{
@@ -81,6 +85,16 @@ int main(int argc, char** argv)
 		case 'p':
 			port = atoi(optarg);
 			break;
+		case 'd':
+			dev_ind = atoi(optarg);
+			break;
+		case 'm':
+			for(int i = 0; optarg[i]; ++i)
+			{
+				dest_mac[i/2] *= 16;
+				dest_mac[i/2] += optarg[i] >= 'a' ? optarg[i] - 'a' + 10 : optarg[i] - '0';
+			}
+			break;
 		case 'h':
 			printf(
 				"setfr (send Ethernet frame) utility\n"
@@ -88,6 +102,8 @@ int main(int argc, char** argv)
 				"-o [2..4] OSI level\n"
 				"-i [xxx.xxx.xxx.xxx] IPv4 address\n"
 				"-p [..65535] port number\n"
+				"-d [1..] index of network device\n"
+				"-m [xx:xx:xx:xx:xx:xx] MAC address\n"
 				"-h - print this message\n"
 			);
 			break;
@@ -96,7 +112,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	int const mtu = 1518;
+	int const mtu = 1514; // 14+1500
 	uint8_t frame_buf[mtu] = {};
 	
 	FILE* const fd = fopen(filename, "rb");
@@ -126,7 +142,24 @@ int main(int argc, char** argv)
 	// Открываем сокет для отправки данных в соответствие с указанным уровнем OSI.
 	if (osi_level == 2)
 	{
+#if defined(__linux__)
+        sock = socket(AF_PACKET, SOCK_RAW, IPPROTO_RAW);
 
+        /*struct ifreq if_idx;
+        memset(&if_idx, 0, sizeof(struct ifreq));
+        strncpy(if_idx.ifr_name, "enp0s3", IFNAMSIZ-1);
+        ioctl(sock, SIOCGIFINDEX, &if_idx);*/
+
+        ((sockaddr_ll *)&addr)->sll_family = AF_PACKET;
+        ((sockaddr_ll *)&addr)->sll_ifindex = dev_ind;
+        ((sockaddr_ll *)&addr)->sll_halen = ETH_ALEN;
+        ((sockaddr_ll *)&addr)->sll_addr[0] = dest_mac[0];
+        ((sockaddr_ll *)&addr)->sll_addr[1] = dest_mac[1];
+        ((sockaddr_ll *)&addr)->sll_addr[2] = dest_mac[2];
+        ((sockaddr_ll *)&addr)->sll_addr[3] = dest_mac[3];
+        ((sockaddr_ll *)&addr)->sll_addr[4] = dest_mac[4];
+        ((sockaddr_ll *)&addr)->sll_addr[5] = dest_mac[5];
+#endif
 	}
 	else if (osi_level == 3)
 	{
