@@ -13,6 +13,7 @@
 #include <headers.h> // LPIPV4_HDR, LPUDP_HDR
 
 #define EOK 0
+#define PATH_MAX MAX_PATH
 
 #elif defined(__linux__)
 
